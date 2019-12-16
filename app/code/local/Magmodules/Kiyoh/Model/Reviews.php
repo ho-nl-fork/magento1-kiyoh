@@ -75,7 +75,7 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
                 if ($questionGroup == 'DEFAULT_OVERALL') {
                     $totalScore = $question['rating'];
                 }
-                if ($questionGroup == 'DEFAULT_OVERALL') {
+                if ($questionGroup == 'DEFAULT_RECOMMEND') {
                     $recommendation = $question['rating'];
                     if ($recommendation == 'false') {
                         $recommendation = 0;

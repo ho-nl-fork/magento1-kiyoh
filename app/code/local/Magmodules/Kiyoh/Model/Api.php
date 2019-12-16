@@ -83,7 +83,7 @@ class Magmodules_Kiyoh_Model_Api extends Mage_Core_Model_Abstract
         //return the transfer as a string
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         $result = curl_exec($ch);
         return json_decode($result, true);
 

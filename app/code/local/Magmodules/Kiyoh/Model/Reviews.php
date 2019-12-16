@@ -64,7 +64,7 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
             $kiyohId = $review['reviewId'];
             $customerName = $review['reviewAuthor'];
             $customerPlace = $review['city'];
-            $date = $review['updatedSince'];
+            $date = Mage::getModel('core/date')->date('Y-m-d H:i:s', $review['updatedSince']);
             $totalScore = $review['rating'];
 
             foreach($review['reviewContent'] as $question) {
@@ -122,15 +122,12 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
             }
         }
 
-        // Need to query db because module is saving to cached config data
+        // Get the last processed review date
         $resource = Mage::getSingleton('core/resource');
         $readConnection = $resource->getConnection('core_read');
-        $query = 'SELECT value FROM ' . $resource->getTableName('core/config_data') . ' WHERE PATH=\'kiyoh/reviews/lastrun\'';
+        $query = 'SELECT date_created FROM ' . $resource->getTableName('kiyoh/reviews') . ' ORDER BY date_created desc';
         $results = $readConnection->fetchAll($query);
-        $date = new DateTime($results[0]['value']);
-        if (strtotime($date->format('Y-m-d')) < time()) {
-            $date->add(new DateInterval('P1D'));
-        }
+        $date = new DateTime($results[0]['date_created']);
 
         $config = Mage::getModel('core/config');
         $config->saveConfig('kiyoh/reviews/lastrun', $date->format('Y-m-d H:i:s'), 'default', 0);

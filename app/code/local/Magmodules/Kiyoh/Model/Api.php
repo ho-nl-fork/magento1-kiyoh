@@ -65,6 +65,28 @@ class Magmodules_Kiyoh_Model_Api extends Mage_Core_Model_Abstract
             $apiUrl .= 'connectorcode=' . $apiKey . '&company_id=' . $apiId . '&reviewcount=10000';
         }
 
+        // Need to query db because module is saving to cached config data
+        $resource = Mage::getSingleton('core/resource');
+        $readConnection = $resource->getConnection('core_read');
+        $query = 'SELECT value FROM ' . $resource->getTableName('core/config_data') . ' WHERE PATH=\'kiyoh/reviews/lastrun\'';
+        $results = $readConnection->fetchAll($query);
+        $date = new DateTime($results[0]['value']);
+
+        $apiUrl = 'https://www.kiyoh.com/v1/publication/review/external?locationId=1046100&tenantId=98&dateSince=' . $date->format('Y-m-d\TH:i:s.v\Z');
+
+        $hash = '90e43255-7ea3-47dc-89f0-aa5f2dfed0ad';
+
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'X-Publication-Api-Token: ' . $hash
+        ));
+        //return the transfer as a string
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+        $result = curl_exec($ch);
+        return json_decode($result, true);
+
         if ($apiId) {
             $xml = simplexml_load_file($apiUrl);
             if ($xml) {

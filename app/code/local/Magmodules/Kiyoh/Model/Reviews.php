@@ -34,7 +34,7 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
 
     public function loadbyKiyohId($kiyohId)
     {
-        $this->_getResource()->load($this, $kiyohId, 'kiyoh_id');
+        $this->_getResource()->load($this, $kiyohId, 'review_string_id');
         return $this;
     }
 
@@ -46,35 +46,43 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
      */
     public function processFeed($feed, $storeId = 0, $type)
     {
+        if ($feed && isset($feed['numberReviews'])){
+            $data['company'] = array();
+            $data['review_list'] = array();
+            $data['company']['total_reviews'] = $feed['numberReviews'];
+            $data['company']['total_score'] = $feed['averageRating'];
+            $data['company']['url'] = $feed['viewReviewUrl'];
+        }
+
 
         $updates = 0;
         $new = 0;
         $apiId = Mage::getStoreConfig('kiyoh/general/api_id', $storeId);
-        $company = $feed->company->name;
+        $company = $feed['locationName'];
 
-        foreach ($feed->review_list->review as $review) {
-            $kiyohId = $review->id;
-            $customerName = $review->customer->name;
-            $customerEmail = $review->customer->email;
-            $customerPlace = $review->customer->place;
-            $date = $review->customer->date;
-            $totalScore = $review->total_score;
+        foreach ($feed['reviews'] as $review) {
+            $kiyohId = $review['reviewId'];
+            $customerName = $review['reviewAuthor'];
+            $customerPlace = $review['city'];
+            $date = $review['updatedSince'];
+            $totalScore = $review['rating'];
 
-            $recommendation = $review->recommendation;
-            $positive = $review->positive;
-            $negative = $review->negative;
-            $purchase = $review->purchase;
-            $reaction = $review->reaction;
-
-            if (($recommendation == 'Ja') || ($recommendation == 'Yes')) {
-                $recommendation = 1;
-            } else {
-                $recommendation = 0;
-            }
-
-            $questions = array();
-            foreach ($review->questions->question as $question) {
-                $questions[] = $question->score;
+            foreach($review['reviewContent'] as $question) {
+                $questionGroup = $question['questionGroup'];
+                if ($questionGroup == 'DEFAULT_ONELINER') {
+                    $reaction = $question['rating'];
+                }
+                if ($questionGroup == 'DEFAULT_OVERALL') {
+                    $totalScore = $question['rating'];
+                }
+                if ($questionGroup == 'DEFAULT_OVERALL') {
+                    $recommendation = $question['rating'];
+                    if ($recommendation == 'false') {
+                        $recommendation = 0;
+                    } else {
+                        $recommendation = 1;
+                    }
+                }
             }
 
             $indatabase = $this->loadbyKiyohId($kiyohId);
@@ -87,28 +95,15 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
                         ->setCompany($company)
                         ->setKiyohId($kiyohId)
                         ->setCustomerName($customerName)
-                        ->setCustomerEmail($customerEmail)
                         ->setCustomerPlace($customerPlace)
                         ->setScore($totalScore)
-                        ->setScoreQ2($questions[0])
-                        ->setScoreQ3($questions[1])
-                        ->setScoreQ4($questions[2])
-                        ->setScoreQ5($questions[3])
-                        ->setScoreQ6($questions[4])
-                        ->setScoreQ7($questions[5])
-                        ->setScoreQ8($questions[6])
-                        ->setScoreQ9($questions[7])
-                        ->setScoreQ10($questions[8])
                         ->setRecommendation($recommendation)
-                        ->setPositive($positive)
-                        ->setNegative($negative)
-                        ->setPurchase($purchase)
                         ->setReaction($reaction)
                         ->setDateCreated($date)
                         ->save();
                     $updates++;
                 } else {
-                    break;
+                    continue;
                 }
             } else {
                 $reviews = Mage::getModel('kiyoh/reviews');
@@ -116,31 +111,28 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
                     ->setCompany($company)
                     ->setKiyohId($kiyohId)
                     ->setCustomerName($customerName)
-                    ->setCustomerEmail($customerEmail)
                     ->setCustomerPlace($customerPlace)
                     ->setScore($totalScore)
-                    ->setScoreQ2($questions[0])
-                    ->setScoreQ3($questions[1])
-                    ->setScoreQ4($questions[2])
-                    ->setScoreQ5($questions[3])
-                    ->setScoreQ6($questions[4])
-                    ->setScoreQ7($questions[5])
-                    ->setScoreQ8($questions[6])
-                    ->setScoreQ9($questions[7])
-                    ->setScoreQ10($questions[8])
                     ->setRecommendation($recommendation)
-                    ->setPositive($positive)
-                    ->setNegative($negative)
-                    ->setPurchase($purchase)
-                    ->setReaction($reaction)
+                   ->setReaction($reaction)
                     ->setDateCreated($date)
                     ->save();
                 $new++;
             }
         }
 
+        // Need to query db because module is saving to cached config data
+        $resource = Mage::getSingleton('core/resource');
+        $readConnection = $resource->getConnection('core_read');
+        $query = 'SELECT value FROM ' . $resource->getTableName('core/config_data') . ' WHERE PATH=\'kiyoh/reviews/lastrun\'';
+        $results = $readConnection->fetchAll($query);
+        $date = new DateTime($results[0]['value']);
+        if (strtotime($date->format('Y-m-d')) < time()) {
+            $date->add(new DateInterval('P1D'));
+        }
+
         $config = Mage::getModel('core/config');
-        $config->saveConfig('kiyoh/reviews/lastrun', now(), 'default', 0);
+        $config->saveConfig('kiyoh/reviews/lastrun', $date->format('Y-m-d H:i:s'), 'default', 0);
         $result = array();
         $result['review_updates'] = $updates;
         $result['review_new'] = $new;

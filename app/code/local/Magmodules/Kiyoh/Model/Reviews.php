@@ -114,8 +114,9 @@ class Magmodules_Kiyoh_Model_Reviews extends Mage_Core_Model_Abstract
                     ->setCustomerPlace($customerPlace)
                     ->setScore($totalScore)
                     ->setRecommendation($recommendation)
-                   ->setReaction($reaction)
+                    ->setReaction($reaction)
                     ->setDateCreated($date)
+                    ->setReviewStringId($kiyohId)
                     ->save();
                 $new++;
             }

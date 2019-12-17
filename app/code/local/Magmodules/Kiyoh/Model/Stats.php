@@ -30,29 +30,37 @@ class Magmodules_Kiyoh_Model_Stats extends Mage_Core_Model_Abstract
     public function processFeed($feed, $storeId = 0)
     {
         $shopId = Mage::getStoreConfig('kiyoh/general/api_id', $storeId);
-        $company = $feed->company->name;
 
-        if ($storeId == 0) {
-            $config = Mage::getModel('core/config');
-            $config->saveConfig('kiyoh/general/url', $feed->company->url, 'default', $storeId);
-            $config->saveConfig('kiyoh/general/company', $feed->company->name, 'default', $storeId);
-        } else {
-            $config = Mage::getModel('core/config');
-            $config->saveConfig('kiyoh/general/url', $feed->company->url, 'stores', $storeId);
-            if (!Mage::getStoreConfig('kiyoh/general/url', 0)) {
-                $config->saveConfig('kiyoh/general/url', $feed->company->url, 'default', 0);
-            }
+        if ($feed && isset($feed['numberReviews'])) {
+            $data['company'] = array();
+            $data['review_list'] = array();
+            $data['company']['total_reviews'] = $feed['numberReviews'];
+            $data['company']['total_score'] = $feed['averageRating'];
+            $data['company']['url'] = $feed['viewReviewUrl'];
 
-            if (!Mage::getStoreConfig('kiyoh/general/company', 0)) {
-                $config->saveConfig('kiyoh/general/company', $feed->company->name, 'default', 0);
+
+            if ($storeId == 0) {
+                $config = Mage::getModel('core/config');
+                $config->saveConfig('kiyoh/general/url', $data['company']['url'], 'default', $storeId);
+                $config->saveConfig('kiyoh/general/company', $data['company']['locationName'], 'default', $storeId);
+            } else {
+                $config = Mage::getModel('core/config');
+                $config->saveConfig('kiyoh/general/url', $data['company']['url'], 'stores', $storeId);
+                if (!Mage::getStoreConfig('kiyoh/general/url', 0)) {
+                    $config->saveConfig('kiyoh/general/url', $data['company']['url'], 'default', 0);
+                }
+
+                if (!Mage::getStoreConfig('kiyoh/general/company', 0)) {
+                    $config->saveConfig('kiyoh/general/company', $data['company']['locationName'], 'default', 0);
+                }
             }
         }
 
-        if ($feed->company->total_reviews > 0) {
-            $score = floatval($feed->company->total_score);
+        if ($data['company']['total_reviews'] > 0) {
+            $score = floatval($data['company']['total_score']);
             $score = ($score * 10);
             $scoremax = '100';
-            $votes = $feed->company->total_reviews;
+            $votes = $data['company']['total_reviews'];
 
             // Check for update or save
             if ($indatabase = $this->loadbyShopId($shopId)) {
@@ -61,35 +69,12 @@ class Magmodules_Kiyoh_Model_Stats extends Mage_Core_Model_Abstract
                 $id = '';
             }
 
-            $questions = array();
-            foreach ($feed->company->average_scores->questions->question as $question) {
-                $questions[] = array('title' => $question->title, 'score' => $question->score);
-            }
-
             // Save Review Stats
             $model = Mage::getModel('kiyoh/stats');
             $model->setId($id)
                 ->setShopId($shopId)
-                ->setCompany($company)
+                ->setCompany($data['company']['locationName'])
                 ->setScore($score)
-                ->setScoreQ2($questions[0]['score'])
-                ->setScoreQ2Title($questions[0]['title'])
-                ->setScoreQ3($questions[1]['score'])
-                ->setScoreQ3Title($questions[1]['title'])
-                ->setScoreQ4($questions[2]['score'])
-                ->setScoreQ4Title($questions[2]['title'])
-                ->setScoreQ5($questions[3]['score'])
-                ->setScoreQ5Title($questions[3]['title'])
-                ->setScoreQ6($questions[4]['score'])
-                ->setScoreQ6Title($questions[4]['title'])
-                ->setScoreQ7($questions[5]['score'])
-                ->setScoreQ7Title($questions[5]['title'])
-                ->setScoreQ8($questions[6]['score'])
-                ->setScoreQ8Title($questions[6]['title'])
-                ->setScoreQ9($questions[7]['score'])
-                ->setScoreQ9Title($questions[7]['title'])
-                ->setScoreQ10($questions[8]['score'])
-                ->setScoreQ10Title($questions[8]['title'])
                 ->setScoremax($scoremax)
                 ->setVotes($votes)
                 ->save();

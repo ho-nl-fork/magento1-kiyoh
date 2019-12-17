@@ -27,13 +27,7 @@ class Magmodules_Kiyoh_Helper_Data extends Mage_Core_Helper_Abstract
     public function getTotalScore()
     {
         $shopId = Mage::getStoreConfig('kiyoh/general/api_id');
-        //$reviewStats = Mage::getModel('kiyoh/stats')->load($shopId, 'shop_id');
-
-        $feed = Mage::getModel('kiyoh/api')->getFeed(0, 'stats');
-
-        $reviewStats = new Varien_Object();
-        $reviewStats->setData('votes', $feed['numberReviews']);
-        $reviewStats->setData('score', $feed['averageRating'] * 10);
+        $reviewStats = Mage::getModel('kiyoh/stats')->load($shopId, 'shop_id');
 
         if ($reviewStats->getScore() > 0) {
             $reviewStats->setPercentage($reviewStats->getScore());

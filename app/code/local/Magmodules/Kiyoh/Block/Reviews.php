@@ -31,7 +31,8 @@ class Magmodules_Kiyoh_Block_Reviews extends Mage_Core_Block_Template
         $collection = Mage::getModel('kiyoh/reviews')->getCollection();
         $collection->setOrder('date_created', 'DESC');
         $collection->addFieldToFilter('status', 1);
-        $collection->addFieldToFilter('shop_id', Mage::getStoreConfig('kiyoh/general/api_id'));
+        // We only have 1 feed for all stores
+        //$collection->addFieldToFilter('shop_id', Mage::getStoreConfig('kiyoh/general/api_id'));
         $this->setReviews($collection);
 
         $stats = Mage::getModel('kiyoh/stats')->load(Mage::getStoreConfig('kiyoh/general/api_id'), 'shop_id');

@@ -125,26 +125,19 @@ class Magmodules_Kiyoh_Model_Api extends Mage_Core_Model_Abstract
         $delay = Mage::getStoreConfig('kiyoh/invitation/delay', $storeId);
         $invStatus = Mage::getStoreConfig('kiyoh/invitation/status', $storeId);
         $email = strtolower($order->getCustomerEmail());
+        $hash = '90e43255-7ea3-47dc-89f0-aa5f2dfed0ad';
 
         if ($order->getStatus() == $invStatus) {
-            $http = new Varien_Http_Adapter_Curl();
-            $http->setConfig(array('timeout' => 30, 'maxredirects' => 0));
+            $url = 'https://www.kiyoh.com/v1/invite/external?hash=' . $hash . '&location_id=1046100&tenantId=98&invite_email=' . $email . '&delay=' . $delay . '&first_name=' . $order->getCustomerFirstname() . '&last_name=' . $order->getCustomerLastname() . '&language=nl&ref_code=' . $order->getIncrementId();
 
-            $url = 'https://' . $apiUrl . '/set.php';
-            $request = 'action=sendInvitation&connector=' . $apiKey . '&targetMail=' . $email;
-            $request .= '&delay=' . $delay . '&user=' . $apiEmail;
-
-            $http->write(Zend_Http_Client::POST, $url, '1.1', array(), $request);
-            $result = $http->read();
-
-            if ($result) {
-                $lines = explode("\n", $result);
-                $responseHtml = $lines[0];
-                $lines = array_reverse($lines);
-                $responseHtml .= ' - ' . $lines[0];
-            } else {
-                $responseHtml = 'No response from ' . $url;
-            }
+            $handle = curl_init();
+            curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 30);
+            curl_setopt($handle, CURLOPT_TIMEOUT, 30);
+            curl_setopt($handle, CURLOPT_URL, $url);
+            curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+            $response = curl_exec($handle);
+            $responseHtml = curl_getinfo($handle, CURLINFO_HTTP_CODE);
+            curl_close($handle);
 
             Mage::getModel('kiyoh/log')->add(
                 'invitation',
@@ -153,7 +146,7 @@ class Magmodules_Kiyoh_Model_Api extends Mage_Core_Model_Abstract
                 $responseHtml,
                 (microtime(true) - $startTime),
                 $crontype,
-                $url . '?' . $request,
+                $url,
                 $order->getId()
             );
 
